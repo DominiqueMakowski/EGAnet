@@ -399,10 +399,14 @@ plot.dynEGA <- function(x, title = "", plot.type = c("GGally","qgraph"),
 }
 
 #Plot EGA----
-# Updated 02.05.2020
+# Updated 15.11.2020
 #' @export
-plot.EGA <- function(x, title = "",  plot.type = c("GGally","qgraph"),
-                     plot.args = list(), ...){
+plot.EGA <- function(x, plot.type = c("GGally","qgraph"),
+                     plot.args = list(
+                       legend = FALSE,
+                       legend.title = "Communities",
+                       legend.names = NULL
+                     ), ...){
   #### MISSING ARGUMENTS HANDLING ####
   if(missing(plot.type))
   {plot.type <- "GGally"
@@ -410,11 +414,12 @@ plot.EGA <- function(x, title = "",  plot.type = c("GGally","qgraph"),
 
   ## Check for input plot arguments
   if(missing(plot.args)){
-    plot.args <-list(vsize = 6, alpha = 0.4, label.size = 5, edge.alpha = 0.7)}
-
-  else{
+    plot.args <- list(vsize = 6, alpha = 0.4, label.size = 5, edge.alpha = 0.7,
+                      legend = FALSE, legend.title = "Communities", legend.names = NULL)
+  }else{
     plot.args <- plot.args
-    plots.arg1 <- list(vsize = 6, label.size = 5, alpha = 0.4, edge.alpha = 0.7)
+    plots.arg1 <- list(vsize = 6, label.size = 5, alpha = 0.4, edge.alpha = 0.7,
+                       legend = FALSE, legend.title = "Communities", legend.names = NULL)
     plot.args.use <- plot.args
 
     if(any(names(plots.arg1) %in% names(plot.args.use))){
@@ -434,8 +439,21 @@ plot.EGA <- function(x, title = "",  plot.type = c("GGally","qgraph"),
                                  ignore.eval = FALSE,
                                  names.eval = "weights",
                                  directed = FALSE)
+    
+    # get legend names
+    if(is.null(plot.args$legend.names)){
+      plot.args$legend.names <- 1:x$n.dim
+    }
+    
+    # initialize legend labels
+    legend.labels <- x$wc
+    
+    # rename dimensions
+    for(i in 1:x$n.dim){
+      legend.labels[which(legend.labels == i)] <- plot.args$legend.names[i]
+    }
 
-    network::set.vertex.attribute(network1, attrname= "Communities", value = x$wc)
+    network::set.vertex.attribute(network1, attrname= plot.args$legend.title, value = legend.labels)
     network::set.vertex.attribute(network1, attrname= "Names", value = network::network.vertex.names(network1))
     network::set.edge.attribute(network1, "color", ifelse(network::get.edge.value(network1, "weights") > 0, "darkgreen", "red"))
     network::set.edge.value(network1,attrname="AbsWeights",value=abs(x$network))
@@ -455,13 +473,22 @@ plot.EGA <- function(x, title = "",  plot.type = c("GGally","qgraph"),
 
 
     set.seed(1234)
-    GGally::ggnet2(network1, edge.size = "ScaledWeights", palette = "Set1",
-                   color = "Communities", edge.color = c("color"),
+    plot.ega <- GGally::ggnet2(network1, edge.size = "ScaledWeights", palette = "Set1",
+                   color = plot.args$legend.title, edge.color = c("color"),
                    alpha = plot.args$alpha, size = plot.args$vsize,
                    edge.alpha = plot.args$edge.alpha,
                    label.size = plot.args$label.size,
                    mode =  layout.spring,
-                   label = colnames(x$network))+ggplot2::theme(legend.title = ggplot2::element_blank())
+                   label = colnames(x$network)) +
+      ggplot2::theme(
+        legend.title = ggplot2::element_text(face = "bold", size = 12, hjust = 0.5),
+      )
+    
+    if(!plot.args$legend){
+      plot.ega <- plot.ega + ggplot2::theme(legend.title = ggplot2::element_blank())
+    }
+    
+    plot.ega
   }
 }
 
